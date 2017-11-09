@@ -1,24 +1,20 @@
+"use strict"
+
 import express = require("express");
-const bodyParser = require("body-parser");
-
-const googlehome = require('google-home-notifier');
+import bodyParser = require("body-parser");
 import superagent = require("superagent");
+import HttpsProxyAgent = require("https-proxy-agent");
 
-googlehome.device('Google Home'); // Change to your Google Home name
-// or if you know your Google Home IP
-// googlehome.ip('192.168.x.x');
-googlehome.accent('ja'); // optional: 'us'= american voice (default), 'uk'= british voice
-googlehome.notify("こんにちは", function(res) {
-    console.log(res);
-  });
-
+const proxy = process.env.http_proxy;
+const agent = new HttpsProxyAgent(proxy);
+const port = 3000;
 const app = express();
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 app.get("/", (req, res) => {
     res.status(200);
-    res.json({speech: "aaa"});
+    res.json({speech: `zatsu is running. port=${port}`});
     res.end();
 });
 
@@ -28,6 +24,7 @@ function kaiwa(text: string): Promise<string>{
         const token = process.env.DOCOMO_TOKEN;
         const url = `https://api.apigw.smt.docomo.ne.jp/dialogue/v1/dialogue?APIKEY=${token}`;
         const post = superagent.post(url);
+        post.agent(agent);
         post.send({
             "utt": text,
             "context": context,
@@ -67,7 +64,6 @@ app.post("/api/dialog", (req, res) => {
                 res.json({speech: "リクエスト失敗したよ"});
                 res.end();
             });
-
     }else{
         res.status(200);
         res.json({speech: "ええと"});
@@ -75,17 +71,4 @@ app.post("/api/dialog", (req, res) => {
     }
 });
 
-
-app.post("/api/speech", (req, res) => {
-    console.log(req.body);
-    res.status(200);
-    res.json({});
-    res.end();
-
-    const text = req.body.text as string;
-    googlehome.notify(text, function(res) {
-        console.log(res);
-      });
-});
-
-app.listen(3000);
+app.listen(port);
